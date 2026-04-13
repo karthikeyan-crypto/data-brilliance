@@ -5,6 +5,9 @@ import Papa from "papaparse";
 import * as XLSX from "xlsx";
 import AnimatedBackground from "./AnimatedBackground";
 import SuccessPopup from "./SuccessPopup";
+import ThemeToggle from "./ThemeToggle";
+import ScrollAnimatedChart from "./ScrollAnimatedChart";
+import { Heatmap, BoxPlot } from "./AdvancedCharts";
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, ScatterChart, Scatter,
   AreaChart, Area, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
@@ -19,6 +22,13 @@ type DataRow = Record<string, string | number>;
 
 const CHART_COLORS = ["#2dd4a8", "#7c3aed", "#ec4899", "#f59e0b", "#06b6d4", "#f43f5e", "#84cc16", "#8b5cf6"];
 
+const TOOLTIP_STYLE = {
+  background: "hsl(230 25% 8%)",
+  border: "1px solid hsl(230 20% 18%)",
+  borderRadius: "12px",
+  color: "hsl(210 40% 95%)",
+};
+
 const Dashboard = ({ onLogout }: DashboardProps) => {
   const [rawData, setRawData] = useState<DataRow[]>([]);
   const [processedData, setProcessedData] = useState<DataRow[]>([]);
@@ -27,12 +37,12 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [showAnalysis, setShowAnalysis] = useState(false);
+  const [analysisKey, setAnalysisKey] = useState(0);
   const [insights, setInsights] = useState<{ type: string; icon: any; title: string; text: string }[]>([]);
   const [activeTab, setActiveTab] = useState<"upload" | "preview" | "charts" | "insights">("upload");
 
   const processData = useCallback((data: DataRow[]) => {
     if (data.length === 0) return [];
-    // Drop duplicates
     const seen = new Set<string>();
     let df = data.filter((row) => {
       const key = JSON.stringify(row);
@@ -43,7 +53,6 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
 
     const cols = Object.keys(df[0]);
 
-    // Fill missing values
     cols.forEach((col) => {
       const values = df.map((r) => r[col]).filter((v) => v !== "" && v !== null && v !== undefined);
       const numericValues = values.map(Number).filter((v) => !isNaN(v));
@@ -66,14 +75,12 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
       }
     });
 
-    // Encode categoricals & normalize numeric
     const numericCols: string[] = [];
     cols.forEach((col) => {
       const vals = df.map((r) => Number(r[col]));
       if (vals.every((v) => !isNaN(v))) numericCols.push(col);
     });
 
-    // Min-Max normalize numeric columns
     numericCols.forEach((col) => {
       const vals = df.map((r) => Number(r[col]));
       const min = Math.min(...vals);
@@ -131,8 +138,8 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
   const runAutoAnalysis = () => {
     setShowAnalysis(true);
     setActiveTab("charts");
+    setAnalysisKey((k) => k + 1); // force re-render all charts
 
-    // Generate insights
     const numCols = columns.filter((c) => {
       const vals = rawData.map((r) => Number(r[c]));
       return vals.every((v) => !isNaN(v));
@@ -142,13 +149,10 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
 
     if (rawData.length > 0) {
       newInsights.push({
-        type: "overview",
-        icon: TrendingUp,
-        title: "Data Overview",
+        type: "overview", icon: TrendingUp, title: "Data Overview",
         text: `Dataset contains ${rawData.length} records across ${columns.length} features. ${numCols.length} numeric and ${columns.length - numCols.length} categorical columns detected.`,
       });
 
-      // Find trends
       numCols.slice(0, 3).forEach((col) => {
         const vals = rawData.map((r) => Number(r[col])).filter((v) => !isNaN(v));
         const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
@@ -158,43 +162,26 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
         const trend = vals.length > 10 ? (vals.slice(-5).reduce((a, b) => a + b, 0) / 5 > mean ? "upward" : "downward") : "stable";
 
         newInsights.push({
-          type: "trend",
-          icon: TrendingUp,
-          title: `${col} Analysis`,
+          type: "trend", icon: TrendingUp, title: `${col} Analysis`,
           text: `Mean: ${mean.toFixed(2)}, Std: ${std.toFixed(2)}, Range: [${min.toFixed(2)}, ${max.toFixed(2)}]. Trend: ${trend}. ${std / mean > 0.5 ? "High variability detected — investigate outliers." : "Low variability — consistent distribution."}`,
         });
       });
 
-      // Anomalies
       const dupes = rawData.length - processedData.length;
       if (dupes > 0) {
         newInsights.push({
-          type: "anomaly",
-          icon: AlertTriangle,
-          title: "Duplicates Removed",
+          type: "anomaly", icon: AlertTriangle, title: "Duplicates Removed",
           text: `${dupes} duplicate rows were detected and removed during preprocessing.`,
         });
       }
 
-      // Recommendations
-      newInsights.push({
-        type: "recommendation",
-        icon: Lightbulb,
-        title: "Recommendations",
+      newInsights.push({ type: "recommendation", icon: Lightbulb, title: "Recommendations",
         text: `Consider feature engineering on top ${Math.min(3, numCols.length)} numeric columns. ${columns.length - numCols.length > 0 ? "Categorical encoding was applied — verify label mapping for analysis." : ""} Data is normalized and ready for ML pipelines.`,
       });
-
-      newInsights.push({
-        type: "decision",
-        icon: Target,
-        title: "Strategic Actions",
+      newInsights.push({ type: "decision", icon: Target, title: "Strategic Actions",
         text: "Deploy this cleaned dataset into your analytics pipeline. Focus on columns with highest variance for predictive modeling. Set up monitoring for data drift on key features.",
       });
-
-      newInsights.push({
-        type: "communication",
-        icon: MessageSquare,
-        title: "Stakeholder Summary",
+      newInsights.push({ type: "communication", icon: MessageSquare, title: "Stakeholder Summary",
         text: `Dataset preprocessed: ${rawData.length} → ${processedData.length} clean records. Missing values imputed, categoricals encoded, numerics normalized. Ready for downstream analysis and decision support.`,
       });
     }
@@ -224,7 +211,6 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
     URL.revokeObjectURL(url);
   };
 
-  // Prepare chart data
   const getNumericColumns = () => columns.filter((c) => rawData.every((r) => !isNaN(Number(r[c]))));
 
   const getDistributionData = (col: string) => {
@@ -267,6 +253,18 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
     return { col, data: Object.entries(freq).slice(0, 8).map(([name, value]) => ({ name, value })) };
   };
 
+  const getRadarData = () => {
+    const nc = getNumericColumns().slice(0, 6);
+    if (nc.length < 3) return [];
+    const means = nc.map((col) => {
+      const vals = rawData.map((r) => Number(r[col])).filter((v) => !isNaN(v));
+      const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+      const max = Math.max(...vals) || 1;
+      return { feature: col.slice(0, 10), value: (mean / max) * 100 };
+    });
+    return means;
+  };
+
   const numCols = getNumericColumns();
   const catDist = getCategoryDistribution();
 
@@ -292,11 +290,11 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
           <div className="flex items-center gap-3">
             <motion.div
               className="w-10 h-10 rounded-xl flex items-center justify-center"
-              style={{ background: "linear-gradient(135deg, hsl(170 80% 50%), hsl(260 70% 60%))" }}
+              style={{ background: "linear-gradient(135deg, hsl(var(--primary)), hsl(var(--secondary)))" }}
               animate={{ rotateY: [0, 360] }}
               transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
             >
-              <BarChart3 className="w-5 h-5 text-background" />
+              <BarChart3 className="w-5 h-5 text-primary-foreground" />
             </motion.div>
             <h1 className="font-display text-xl font-bold text-gradient">DataForge</h1>
           </div>
@@ -312,6 +310,7 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
                 {fileName}
               </motion.span>
             )}
+            <ThemeToggle />
             <motion.button
               onClick={onLogout}
               className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground px-3 py-2 rounded-lg hover:bg-muted transition-colors"
@@ -357,15 +356,12 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
               exit={{ opacity: 0, y: -30 }}
               className="flex flex-col items-center justify-center min-h-[60vh]"
             >
-              <motion.label
-                className="relative cursor-pointer w-full max-w-lg"
-                whileHover={{ scale: 1.02 }}
-              >
+              <motion.label className="relative cursor-pointer w-full max-w-lg" whileHover={{ scale: 1.02 }}>
                 <input type="file" accept=".csv,.xlsx" onChange={handleFileUpload} className="hidden" />
                 <div className="glass rounded-3xl p-16 text-center gradient-border group">
                   <motion.div
                     className="w-24 h-24 mx-auto rounded-2xl flex items-center justify-center mb-6"
-                    style={{ background: "linear-gradient(135deg, hsl(170 80% 50% / 0.2), hsl(260 70% 60% / 0.2))" }}
+                    style={{ background: "linear-gradient(135deg, hsl(var(--primary) / 0.2), hsl(var(--secondary) / 0.2))" }}
                     animate={{ y: [0, -10, 0] }}
                     transition={{ duration: 2, repeat: Infinity }}
                   >
@@ -374,14 +370,10 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
                   <h3 className="font-display text-xl font-bold text-foreground mb-2">Drop your data here</h3>
                   <p className="text-muted-foreground text-sm">CSV or Excel files supported</p>
                   {isProcessing && (
-                    <motion.div
-                      className="mt-6 h-2 rounded-full bg-muted overflow-hidden"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                    >
+                    <motion.div className="mt-6 h-2 rounded-full bg-muted overflow-hidden" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                       <motion.div
                         className="h-full rounded-full"
-                        style={{ background: "linear-gradient(90deg, hsl(170 80% 50%), hsl(260 70% 60%), hsl(320 80% 55%))" }}
+                        style={{ background: "linear-gradient(90deg, hsl(var(--primary)), hsl(var(--secondary)), hsl(var(--accent)))" }}
                         initial={{ width: "0%" }}
                         animate={{ width: "100%" }}
                         transition={{ duration: 1.5 }}
@@ -395,21 +387,15 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
 
           {/* Preview tab */}
           {activeTab === "preview" && processedData.length > 0 && (
-            <motion.div
-              key="preview"
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -30 }}
-              className="space-y-6"
-            >
+            <motion.div key="preview" initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -30 }} className="space-y-6">
               <div className="flex items-center justify-between">
                 <h2 className="font-display text-lg font-bold text-foreground">Processed Data</h2>
                 <div className="flex gap-3">
                   <motion.button
                     onClick={runAutoAnalysis}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-display text-xs font-semibold text-background"
-                    style={{ background: "linear-gradient(135deg, hsl(170 80% 50%), hsl(260 70% 60%))" }}
-                    whileHover={{ scale: 1.05, boxShadow: "0 0 30px hsl(170 80% 50% / 0.4)" }}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-display text-xs font-semibold text-primary-foreground"
+                    style={{ background: "linear-gradient(135deg, hsl(var(--primary)), hsl(var(--secondary)))" }}
+                    whileHover={{ scale: 1.05, boxShadow: "0 0 30px hsl(var(--primary) / 0.4)" }}
                     whileTap={{ scale: 0.95 }}
                   >
                     <Brain size={16} />
@@ -475,7 +461,7 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
           {/* Charts tab */}
           {activeTab === "charts" && showAnalysis && (
             <motion.div
-              key="charts"
+              key={`charts-${analysisKey}`}
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -30 }}
@@ -485,142 +471,143 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Distribution histogram */}
                 {numCols.length > 0 && (
-                  <motion.div
-                    className="glass rounded-2xl p-6 gradient-border"
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.1 }}
-                  >
+                  <ScrollAnimatedChart className="glass rounded-2xl p-6 gradient-border">
                     <h3 className="font-display text-sm font-semibold text-foreground mb-4">{numCols[0]} Distribution</h3>
                     <ResponsiveContainer width="100%" height={250}>
                       <BarChart data={getDistributionData(numCols[0])}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(230 20% 18%)" />
-                        <XAxis dataKey="range" tick={{ fill: "hsl(215 20% 55%)", fontSize: 10 }} />
-                        <YAxis tick={{ fill: "hsl(215 20% 55%)", fontSize: 10 }} />
-                        <Tooltip contentStyle={{ background: "hsl(230 25% 8%)", border: "1px solid hsl(230 20% 18%)", borderRadius: "12px", color: "hsl(210 40% 95%)" }} />
-                        <Bar dataKey="count" radius={[6, 6, 0, 0]}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis dataKey="range" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
+                        <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
+                        <Tooltip contentStyle={TOOLTIP_STYLE} />
+                        <Bar dataKey="count" radius={[6, 6, 0, 0]} animationDuration={1500} animationBegin={200}>
                           {getDistributionData(numCols[0]).map((_, i) => (
                             <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                           ))}
                         </Bar>
                       </BarChart>
                     </ResponsiveContainer>
-                  </motion.div>
+                  </ScrollAnimatedChart>
                 )}
 
-                {/* Line chart */}
+                {/* Area chart */}
                 {numCols.length > 0 && (
-                  <motion.div
-                    className="glass rounded-2xl p-6 gradient-border"
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.2 }}
-                  >
+                  <ScrollAnimatedChart className="glass rounded-2xl p-6 gradient-border" delay={0.1}>
                     <h3 className="font-display text-sm font-semibold text-foreground mb-4">{numCols[0]} Trend</h3>
                     <ResponsiveContainer width="100%" height={250}>
                       <AreaChart data={rawData.slice(0, 50).map((r, i) => ({ idx: i, val: Number(r[numCols[0]]) }))}>
                         <defs>
-                          <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+                          <linearGradient id={`areaGrad-${analysisKey}`} x1="0" y1="0" x2="0" y2="1">
                             <stop offset="0%" stopColor="#2dd4a8" stopOpacity={0.4} />
                             <stop offset="100%" stopColor="#2dd4a8" stopOpacity={0} />
                           </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(230 20% 18%)" />
-                        <XAxis dataKey="idx" tick={{ fill: "hsl(215 20% 55%)", fontSize: 10 }} />
-                        <YAxis tick={{ fill: "hsl(215 20% 55%)", fontSize: 10 }} />
-                        <Tooltip contentStyle={{ background: "hsl(230 25% 8%)", border: "1px solid hsl(230 20% 18%)", borderRadius: "12px", color: "hsl(210 40% 95%)" }} />
-                        <Area type="monotone" dataKey="val" stroke="#2dd4a8" fill="url(#areaGrad)" strokeWidth={2} />
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis dataKey="idx" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
+                        <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
+                        <Tooltip contentStyle={TOOLTIP_STYLE} />
+                        <Area type="monotone" dataKey="val" stroke="#2dd4a8" fill={`url(#areaGrad-${analysisKey})`} strokeWidth={2} animationDuration={2000} />
                       </AreaChart>
                     </ResponsiveContainer>
-                  </motion.div>
+                  </ScrollAnimatedChart>
                 )}
 
-                {/* Pie chart for categories */}
+                {/* Pie chart */}
                 {catDist.data.length > 0 && (
-                  <motion.div
-                    className="glass rounded-2xl p-6 gradient-border"
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.3 }}
-                  >
+                  <ScrollAnimatedChart className="glass rounded-2xl p-6 gradient-border" delay={0.15}>
                     <h3 className="font-display text-sm font-semibold text-foreground mb-4">{catDist.col} Distribution</h3>
                     <ResponsiveContainer width="100%" height={250}>
                       <PieChart>
-                        <Pie data={catDist.data} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} strokeWidth={2} stroke="hsl(230 25% 8%)">
+                        <Pie data={catDist.data} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} strokeWidth={2} stroke="hsl(var(--card))" animationDuration={1500} animationBegin={300}>
                           {catDist.data.map((_, i) => (
                             <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                           ))}
                         </Pie>
-                        <Tooltip contentStyle={{ background: "hsl(230 25% 8%)", border: "1px solid hsl(230 20% 18%)", borderRadius: "12px", color: "hsl(210 40% 95%)" }} />
-                        <Legend wrapperStyle={{ color: "hsl(215 20% 55%)", fontSize: 11 }} />
+                        <Tooltip contentStyle={TOOLTIP_STYLE} />
+                        <Legend wrapperStyle={{ color: "hsl(var(--muted-foreground))", fontSize: 11 }} />
                       </PieChart>
                     </ResponsiveContainer>
-                  </motion.div>
+                  </ScrollAnimatedChart>
                 )}
 
                 {/* Scatter plot */}
                 {numCols.length >= 2 && (
-                  <motion.div
-                    className="glass rounded-2xl p-6 gradient-border"
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.4 }}
-                  >
+                  <ScrollAnimatedChart className="glass rounded-2xl p-6 gradient-border" delay={0.2}>
                     <h3 className="font-display text-sm font-semibold text-foreground mb-4">{numCols[0]} vs {numCols[1]}</h3>
                     <ResponsiveContainer width="100%" height={250}>
                       <ScatterChart>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(230 20% 18%)" />
-                        <XAxis dataKey={numCols[0]} type="number" tick={{ fill: "hsl(215 20% 55%)", fontSize: 10 }} name={numCols[0]} />
-                        <YAxis dataKey={numCols[1]} type="number" tick={{ fill: "hsl(215 20% 55%)", fontSize: 10 }} name={numCols[1]} />
-                        <Tooltip contentStyle={{ background: "hsl(230 25% 8%)", border: "1px solid hsl(230 20% 18%)", borderRadius: "12px", color: "hsl(210 40% 95%)" }} />
-                        <Scatter data={getCorrelationData()} fill="#7c3aed" />
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis dataKey={numCols[0]} type="number" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} name={numCols[0]} />
+                        <YAxis dataKey={numCols[1]} type="number" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} name={numCols[1]} />
+                        <Tooltip contentStyle={TOOLTIP_STYLE} />
+                        <Scatter data={getCorrelationData()} fill="#7c3aed" animationDuration={1500} />
                       </ScatterChart>
                     </ResponsiveContainer>
-                  </motion.div>
+                  </ScrollAnimatedChart>
                 )}
 
-                {/* Second numeric distribution */}
-                {numCols.length > 1 && (
-                  <motion.div
-                    className="glass rounded-2xl p-6 gradient-border"
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.5 }}
-                  >
-                    <h3 className="font-display text-sm font-semibold text-foreground mb-4">{numCols[1]} Distribution</h3>
-                    <ResponsiveContainer width="100%" height={250}>
-                      <BarChart data={getDistributionData(numCols[1])}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(230 20% 18%)" />
-                        <XAxis dataKey="range" tick={{ fill: "hsl(215 20% 55%)", fontSize: 10 }} />
-                        <YAxis tick={{ fill: "hsl(215 20% 55%)", fontSize: 10 }} />
-                        <Tooltip contentStyle={{ background: "hsl(230 25% 8%)", border: "1px solid hsl(230 20% 18%)", borderRadius: "12px", color: "hsl(210 40% 95%)" }} />
-                        <Bar dataKey="count" radius={[6, 6, 0, 0]} fill="#ec4899" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </motion.div>
-                )}
-
-                {/* Line multi */}
+                {/* Correlation Heatmap */}
                 {numCols.length >= 2 && (
-                  <motion.div
-                    className="glass rounded-2xl p-6 gradient-border"
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.6 }}
-                  >
+                  <ScrollAnimatedChart className="glass rounded-2xl p-6 gradient-border" delay={0.25}>
+                    <h3 className="font-display text-sm font-semibold text-foreground mb-4">Correlation Matrix</h3>
+                    <Heatmap data={rawData} columns={columns} />
+                  </ScrollAnimatedChart>
+                )}
+
+                {/* Box Plot */}
+                {numCols.length > 0 && (
+                  <ScrollAnimatedChart className="glass rounded-2xl p-6 gradient-border" delay={0.3}>
+                    <h3 className="font-display text-sm font-semibold text-foreground mb-4">Box Plot — Distribution Stats</h3>
+                    <BoxPlot data={rawData} columns={columns} />
+                  </ScrollAnimatedChart>
+                )}
+
+                {/* Radar chart */}
+                {numCols.length >= 3 && (
+                  <ScrollAnimatedChart className="glass rounded-2xl p-6 gradient-border" delay={0.35}>
+                    <h3 className="font-display text-sm font-semibold text-foreground mb-4">Feature Radar</h3>
+                    <ResponsiveContainer width="100%" height={250}>
+                      <RadarChart data={getRadarData()}>
+                        <PolarGrid stroke="hsl(var(--border))" />
+                        <PolarAngleAxis dataKey="feature" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
+                        <PolarRadiusAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 9 }} />
+                        <Radar dataKey="value" stroke="#ec4899" fill="#ec4899" fillOpacity={0.3} animationDuration={1500} />
+                      </RadarChart>
+                    </ResponsiveContainer>
+                  </ScrollAnimatedChart>
+                )}
+
+                {/* Multi-line */}
+                {numCols.length >= 2 && (
+                  <ScrollAnimatedChart className="glass rounded-2xl p-6 gradient-border" delay={0.4}>
                     <h3 className="font-display text-sm font-semibold text-foreground mb-4">Multi-Feature Comparison</h3>
                     <ResponsiveContainer width="100%" height={250}>
                       <LineChart data={rawData.slice(0, 30).map((r, i) => ({ idx: i, [numCols[0]]: Number(r[numCols[0]]), [numCols[1]]: Number(r[numCols[1]]) }))}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(230 20% 18%)" />
-                        <XAxis dataKey="idx" tick={{ fill: "hsl(215 20% 55%)", fontSize: 10 }} />
-                        <YAxis tick={{ fill: "hsl(215 20% 55%)", fontSize: 10 }} />
-                        <Tooltip contentStyle={{ background: "hsl(230 25% 8%)", border: "1px solid hsl(230 20% 18%)", borderRadius: "12px", color: "hsl(210 40% 95%)" }} />
-                        <Line type="monotone" dataKey={numCols[0]} stroke="#2dd4a8" strokeWidth={2} dot={false} />
-                        <Line type="monotone" dataKey={numCols[1]} stroke="#7c3aed" strokeWidth={2} dot={false} />
-                        <Legend wrapperStyle={{ color: "hsl(215 20% 55%)", fontSize: 11 }} />
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis dataKey="idx" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
+                        <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
+                        <Tooltip contentStyle={TOOLTIP_STYLE} />
+                        <Line type="monotone" dataKey={numCols[0]} stroke="#2dd4a8" strokeWidth={2} dot={false} animationDuration={2000} />
+                        <Line type="monotone" dataKey={numCols[1]} stroke="#7c3aed" strokeWidth={2} dot={false} animationDuration={2000} animationBegin={500} />
+                        <Legend wrapperStyle={{ color: "hsl(var(--muted-foreground))", fontSize: 11 }} />
                       </LineChart>
                     </ResponsiveContainer>
-                  </motion.div>
+                  </ScrollAnimatedChart>
+                )}
+
+                {/* Second distribution */}
+                {numCols.length > 1 && (
+                  <ScrollAnimatedChart className="glass rounded-2xl p-6 gradient-border" delay={0.45}>
+                    <h3 className="font-display text-sm font-semibold text-foreground mb-4">{numCols[1]} Distribution</h3>
+                    <ResponsiveContainer width="100%" height={250}>
+                      <BarChart data={getDistributionData(numCols[1])}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis dataKey="range" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
+                        <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
+                        <Tooltip contentStyle={TOOLTIP_STYLE} />
+                        <Bar dataKey="count" radius={[6, 6, 0, 0]} fill="#ec4899" animationDuration={1500} animationBegin={400} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </ScrollAnimatedChart>
                 )}
               </div>
             </motion.div>
@@ -628,13 +615,7 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
 
           {/* Insights tab */}
           {activeTab === "insights" && insights.length > 0 && (
-            <motion.div
-              key="insights"
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -30 }}
-              className="space-y-6"
-            >
+            <motion.div key="insights" initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -30 }} className="space-y-6">
               <div className="flex items-center justify-between">
                 <h2 className="font-display text-lg font-bold text-foreground">AI Insights & Recommendations</h2>
                 <motion.button
@@ -663,10 +644,10 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
                         className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
                         style={{
                           background: insight.type === "anomaly"
-                            ? "linear-gradient(135deg, hsl(0 84% 60% / 0.2), hsl(0 84% 60% / 0.1))"
+                            ? "linear-gradient(135deg, hsl(var(--destructive) / 0.2), hsl(var(--destructive) / 0.1))"
                             : insight.type === "recommendation"
                             ? "linear-gradient(135deg, hsl(45 100% 50% / 0.2), hsl(45 100% 50% / 0.1))"
-                            : "linear-gradient(135deg, hsl(170 80% 50% / 0.2), hsl(260 70% 60% / 0.1))",
+                            : "linear-gradient(135deg, hsl(var(--primary) / 0.2), hsl(var(--secondary) / 0.1))",
                         }}
                       >
                         <insight.icon
@@ -689,13 +670,7 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
                 ))}
               </div>
 
-              {/* Insights table */}
-              <motion.div
-                className="glass rounded-2xl overflow-hidden gradient-border"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.5 }}
-              >
+              <motion.div className="glass rounded-2xl overflow-hidden gradient-border" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}>
                 <div className="p-4 border-b border-border/30">
                   <h3 className="font-display text-sm font-semibold text-foreground">Analysis Summary Table</h3>
                 </div>
