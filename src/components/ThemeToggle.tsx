@@ -3,8 +3,8 @@ import { motion } from "framer-motion";
 import { Sun, Moon, Palette } from "lucide-react";
 
 const THEMES = [
-  { id: "dark", label: "Dark", icon: Moon },
-  { id: "light", label: "Light", icon: Sun },
+  { id: "dark", label: "Night", icon: Moon },
+  { id: "light", label: "Day", icon: Sun },
   { id: "cyber", label: "Cyber", icon: Palette },
 ] as const;
 
