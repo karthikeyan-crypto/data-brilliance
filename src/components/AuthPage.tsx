@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Eye, EyeOff, Zap, Shield, BarChart3, Sparkles } from "lucide-react";
-import AnimatedBackground from "./AnimatedBackground";
+import JupiterBackground from "./JupiterBackground";
 
 interface AuthPageProps {
   onAuth: () => void;
@@ -28,18 +28,18 @@ const AuthPage = ({ onAuth }: AuthPageProps) => {
 
   return (
     <div className="min-h-screen relative overflow-hidden">
-      <AnimatedBackground />
+      <JupiterBackground />
 
       {/* Gradient orbs */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
         <motion.div
-          className="absolute w-[600px] h-[600px] rounded-full opacity-20"
+          className="absolute w-[600px] h-[600px] rounded-full opacity-10"
           style={{ background: "radial-gradient(circle, hsl(170 80% 50% / 0.4), transparent)", top: "-10%", right: "-10%" }}
           animate={{ scale: [1, 1.2, 1], rotate: [0, 90, 0] }}
           transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
         />
         <motion.div
-          className="absolute w-[500px] h-[500px] rounded-full opacity-15"
+          className="absolute w-[500px] h-[500px] rounded-full opacity-10"
           style={{ background: "radial-gradient(circle, hsl(260 70% 60% / 0.4), transparent)", bottom: "-10%", left: "-5%" }}
           animate={{ scale: [1.2, 1, 1.2], rotate: [0, -90, 0] }}
           transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
