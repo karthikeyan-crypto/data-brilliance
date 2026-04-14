@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Maximize2 } from "lucide-react";
 
@@ -18,7 +19,6 @@ const ChartZoomModal = ({ isOpen, onClose, title, children }: ChartZoomModalProp
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
         >
-          {/* Backdrop */}
           <motion.div
             className="absolute inset-0 bg-background/80 backdrop-blur-xl"
             onClick={onClose}
@@ -26,8 +26,6 @@ const ChartZoomModal = ({ isOpen, onClose, title, children }: ChartZoomModalProp
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           />
-
-          {/* Modal */}
           <motion.div
             className="relative w-full max-w-5xl max-h-[90vh] glass-strong rounded-3xl border border-border/50 overflow-hidden"
             initial={{ scale: 0.5, opacity: 0, rotateX: 15 }}
@@ -35,7 +33,6 @@ const ChartZoomModal = ({ isOpen, onClose, title, children }: ChartZoomModalProp
             exit={{ scale: 0.5, opacity: 0, rotateX: -15 }}
             transition={{ type: "spring", damping: 20, stiffness: 200 }}
           >
-            {/* Header */}
             <div className="flex items-center justify-between p-6 border-b border-border/30">
               <div className="flex items-center gap-3">
                 <motion.div
@@ -57,8 +54,6 @@ const ChartZoomModal = ({ isOpen, onClose, title, children }: ChartZoomModalProp
                 <X size={18} />
               </motion.button>
             </div>
-
-            {/* Chart area */}
             <div className="p-8" style={{ minHeight: "500px" }}>
               {children}
             </div>
@@ -87,7 +82,6 @@ export const ZoomableChart = ({
         onClick={() => setIsOpen(true)}
       >
         {children}
-        {/* Zoom overlay hint */}
         <motion.div
           className="absolute top-4 right-4 w-8 h-8 rounded-lg glass flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
           whileHover={{ scale: 1.2 }}
@@ -95,14 +89,11 @@ export const ZoomableChart = ({
           <Maximize2 size={14} className="text-primary" />
         </motion.div>
       </div>
-
       <ChartZoomModal isOpen={isOpen} onClose={() => setIsOpen(false)} title={title}>
         {fullChildren}
       </ChartZoomModal>
     </>
   );
 };
-
-import { useState } from "react";
 
 export default ChartZoomModal;
