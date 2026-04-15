@@ -2,6 +2,8 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Eye, EyeOff, Zap, Shield, BarChart3, Sparkles } from "lucide-react";
 import AnimatedBackground from "./AnimatedBackground";
+import TypingText from "./TypingText";
+import FloatingCounter from "./FloatingCounter";
 
 interface AuthPageProps {
   onAuth: () => void;
