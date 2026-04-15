@@ -66,15 +66,28 @@ const AuthPage = ({ onAuth }: AuthPageProps) => {
               >
                 DataForge
               </motion.h1>
-              <motion.p
-                className="text-xl text-muted-foreground mt-4 font-body"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-              >
-                Next-generation automated data preprocessing & intelligence platform
-              </motion.p>
+              <div className="text-xl text-muted-foreground mt-4 font-body h-8">
+                <TypingText
+                  texts={[
+                    "AI-powered data preprocessing",
+                    "Automated anomaly detection",
+                    "Smart pattern recognition",
+                    "One-click data intelligence",
+                  ]}
+                />
+              </div>
             </div>
+
+            <motion.div
+              className="glass rounded-2xl p-5 grid grid-cols-3 gap-4"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 }}
+            >
+              <FloatingCounter end={2400000} suffix="+" label="Rows Processed" delay={0.8} />
+              <FloatingCounter end={99} suffix="%" label="Accuracy" delay={1.0} />
+              <FloatingCounter end={150} suffix="ms" label="Avg Speed" delay={1.2} />
+            </motion.div>
 
             <div className="grid grid-cols-2 gap-4">
               {features.map((f, i) => (
