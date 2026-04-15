@@ -370,7 +370,7 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
 
   return (
     <div className="min-h-screen relative">
-      <JupiterBackground />
+      <AnimatedBackground />
 
       {/* Analyzing overlay */}
       <AnimatePresence>

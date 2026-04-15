@@ -28,7 +28,7 @@ const AuthPage = ({ onAuth }: AuthPageProps) => {
 
   return (
     <div className="min-h-screen relative overflow-hidden">
-      <JupiterBackground />
+      <AnimatedBackground />
 
       {/* Gradient orbs */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
