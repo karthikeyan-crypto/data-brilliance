@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Eye, EyeOff, Zap, Shield, BarChart3, Sparkles } from "lucide-react";
-import JupiterBackground from "./JupiterBackground";
+import AnimatedBackground from "./AnimatedBackground";
 
 interface AuthPageProps {
   onAuth: () => void;
