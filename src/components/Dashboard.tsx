@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Upload, FileSpreadsheet, Trash2, LogOut, BarChart3, Brain, Download, Table, TrendingUp, AlertTriangle, Lightbulb, Target, MessageSquare, Zap, PieChart as PieIcon, Activity, Layers } from "lucide-react";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
-import JupiterBackground from "./JupiterBackground";
+import AnimatedBackground from "./AnimatedBackground";
 import SuccessPopup from "./SuccessPopup";
 import ThemeToggle from "./ThemeToggle";
 import ScrollAnimatedChart from "./ScrollAnimatedChart";
@@ -370,7 +370,7 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
 
   return (
     <div className="min-h-screen relative">
-      <JupiterBackground />
+      <AnimatedBackground />
 
       {/* Analyzing overlay */}
       <AnimatePresence>

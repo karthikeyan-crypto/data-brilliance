@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Eye, EyeOff, Zap, Shield, BarChart3, Sparkles } from "lucide-react";
-import JupiterBackground from "./JupiterBackground";
+import AnimatedBackground from "./AnimatedBackground";
 
 interface AuthPageProps {
   onAuth: () => void;
@@ -28,7 +28,7 @@ const AuthPage = ({ onAuth }: AuthPageProps) => {
 
   return (
     <div className="min-h-screen relative overflow-hidden">
-      <JupiterBackground />
+      <AnimatedBackground />
 
       {/* Gradient orbs */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
