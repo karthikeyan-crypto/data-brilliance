@@ -65,31 +65,22 @@ const MagneticCursor = () => {
       />
       {/* Ring */}
       <motion.div
-        className="fixed top-0 left-0 z-[9998] pointer-events-none"
+        className="fixed top-0 left-0 z-[9998] pointer-events-none rounded-full"
         style={{
           x: ringX,
           y: ringY,
           translateX: "-50%",
           translateY: "-50%",
-        }}
-        animate={{
           width: isClicking ? 20 : isHovering ? 50 : 36,
           height: isClicking ? 20 : isHovering ? 50 : 36,
-          borderWidth: isHovering ? 2 : 1.5,
           opacity: 0.5,
+          borderWidth: isHovering ? 2 : 1.5,
+          borderStyle: "solid",
+          borderColor: isHovering ? "hsl(var(--primary))" : "rgba(255,255,255,0.4)",
+          background: isHovering ? "hsl(var(--primary) / 0.08)" : "transparent",
+          transition: "width 0.2s, height 0.2s, border-color 0.2s, background 0.2s",
         }}
-        transition={{ type: "spring", damping: 20, stiffness: 300 }}
-      >
-        <div
-          className="w-full h-full rounded-full border-primary/60"
-          style={{
-            borderWidth: "inherit",
-            borderStyle: "solid",
-            borderColor: isHovering ? "hsl(var(--primary))" : "rgba(255,255,255,0.4)",
-            background: isHovering ? "hsl(var(--primary) / 0.08)" : "transparent",
-          }}
-        />
-      </motion.div>
+      />
     </>
   );
 };
